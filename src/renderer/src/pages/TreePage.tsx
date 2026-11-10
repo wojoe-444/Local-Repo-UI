@@ -33,7 +33,7 @@ export default function TreePage(): JSX.Element {
         <RefSelector value={ref} onChange={(r) => nav(treeLink(r, path))} />
         <Breadcrumb refName={ref} path={path} />
         <span className="spacer" />
-        <Link className="btn" to={commitsLink(ref, path)}><HistoryIcon /> {count.data !== null && !path ? `${count.data} commits` : 'History'}</Link>
+        <Link className="btn" to={commitsLink(ref, path)}><HistoryIcon /> {count.data !== null && !path ? `${count.data} commit${count.data === 1 ? "" : "s"}` : 'History'}</Link>
       </div>
       {tree.error && <div className="flash error">{tree.error}</div>}
       <div className="box">
