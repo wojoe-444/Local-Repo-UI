@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { execFileSync } from 'child_process'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import * as git from '../src/main/git'
@@ -67,6 +67,19 @@ describe('git service', () => {
   it('rejects option-like refs and traversal', async () => {
     await expect(git.getLog(dir, { ref: '--output=x' })).rejects.toThrow()
     await expect(git.readBlob(dir, 'main', '../x')).rejects.toThrow()
+    await expect(git.compareRefs(dir, 'main', '--output=x')).rejects.toThrow()
+    await expect(git.getCommit(dir, '--help')).rejects.toThrow()
+    await expect(git.getLog(dir, { ref: 'main', skip: '--output=x' as unknown as number })).resolves.toBeTruthy()
+  })
+  it('never runs repo-configured textconv/external diff programs', async () => {
+    const marker = join(dir, 'pwned.txt')
+    writeFileSync(join(dir, '.gitattributes'), '*.ts diff=evil\n')
+    g('config', 'diff.evil.textconv', `touch "${marker.replace(/\\/g, '/')}" #`)
+    g('config', 'diff.evil.command', `touch "${marker.replace(/\\/g, '/')}" #`)
+    await git.compareRefs(dir, 'main', 'feature/x')
+    const { commits } = await git.getLog(dir, { ref: 'feature/x' })
+    await git.getCommit(dir, commits[0].sha)
+    expect(existsSync(marker)).toBe(false)
   })
 })
 

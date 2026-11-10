@@ -16,7 +16,7 @@ function run(cwd: string, args: string[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     execFile(
       'git',
-      ['-c', 'core.quotepath=false', '-c', 'color.ui=false', ...args],
+      ['-c', 'core.quotepath=false', '-c', 'color.ui=false', '-c', 'core.fsmonitor=false', '-c', 'core.pager=cat', ...args],
       { cwd, encoding: 'buffer', maxBuffer: MAX_BUFFER, windowsHide: true, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } },
       (err, stdout, stderr) => {
         if (err) {
@@ -32,12 +32,13 @@ const text = async (cwd: string, args: string[]): Promise<string> => (await run(
 
 /** Refs/revisions come from the UI; never allow them to be parsed as git options. */
 export function assertRef(ref: string): string {
-  if (!ref || ref.startsWith('-') || /[\0\r\n]/.test(ref)) throw new Error(`Invalid ref: ${ref}`)
+  if (typeof ref !== 'string' || !ref || ref.startsWith('-') || /[\0\r\n]/.test(ref)) throw new Error(`Invalid ref: ${ref}`)
   return ref
 }
 
 /** Paths are used inside `ref:path` or after `--`; just reject traversal and NULs. */
 export function assertPath(p: string): string {
+  if (typeof p !== 'string') throw new Error('Invalid path')
   const clean = p.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
   if (clean.includes('\0') || clean.split('/').some((seg) => seg === '..')) throw new Error(`Invalid path: ${p}`)
   return clean
@@ -156,9 +157,10 @@ function parseLog(out: string): CommitSummary[] {
 
 export async function getLog(repo: string, o: LogOptions): Promise<{ commits: CommitSummary[]; hasMore: boolean }> {
   assertRef(o.ref)
-  const limit = Math.min(o.limit ?? 30, 200)
-  const args = ['log', `--format=${LOG_FMT}`, `--skip=${o.skip ?? 0}`, `-n`, String(limit + 1)]
-  if (o.search) args.push('-i', '--fixed-strings', `--grep=${o.search}`)
+  const limit = Math.min(Math.max(Math.trunc(Number(o.limit ?? 30)) || 30, 1), 200)
+  const skip = Math.max(Math.trunc(Number(o.skip ?? 0)) || 0, 0)
+  const args = ['log', `--format=${LOG_FMT}`, `--skip=${skip}`, `-n`, String(limit + 1)]
+  if (o.search && typeof o.search === 'string') args.push('-i', '--fixed-strings', `--grep=${o.search}`)
   args.push(o.ref, '--')
   if (o.path) args.push(assertPath(o.path))
   const commits = parseLog(await text(repo, args))
@@ -189,15 +191,15 @@ export async function getCommit(repo: string, sha: string): Promise<CommitDetail
   const [summary] = parseLog(await text(repo, ['show', '-s', `--format=${LOG_FMT}`, sha, '--']))
   if (!summary) throw new Error(`Commit not found: ${sha}`)
   const raw = summary.parents.length
-    ? await text(repo, ['diff', '-M', '--no-color', '--no-ext-diff', summary.parents[0], summary.sha, '--'])
-    : await text(repo, ['show', '--format=', '-p', '-M', '--no-color', '--no-ext-diff', summary.sha, '--'])
+    ? await text(repo, ['diff', '-M', '--no-color', '--no-ext-diff', '--no-textconv', summary.parents[0], summary.sha, '--'])
+    : await text(repo, ['show', '--format=', '-p', '-M', '--no-color', '--no-ext-diff', '--no-textconv', summary.sha, '--'])
   const { files, truncated } = limitDiff(parseDiff(raw))
   return { ...summary, files, truncated }
 }
 
 export async function compareRefs(repo: string, base: string, head: string): Promise<CompareResult> {
   assertRef(base); assertRef(head)
-  const raw = await text(repo, ['diff', '-M', '--no-color', '--no-ext-diff', `${base}...${head}`, '--'])
+  const raw = await text(repo, ['diff', '-M', '--no-color', '--no-ext-diff', '--no-textconv', `${base}...${head}`, '--'])
   const commits = parseLog(await text(repo, ['log', `--format=${LOG_FMT}`, '-n', '200', `${base}..${head}`, '--']))
   const { files, truncated } = limitDiff(parseDiff(raw))
   return { base, head, commits, files, truncated }
