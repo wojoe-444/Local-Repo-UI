@@ -1,0 +1,79 @@
+import { describe, it, expect, beforeAll } from 'vitest'
+import { execFileSync } from 'child_process'
+import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import * as git from '../src/main/git'
+import { parseDiff } from '../src/main/diff'
+
+let dir: string
+const g = (...a: string[]): string => execFileSync('git', a, { cwd: dir, encoding: 'utf8' })
+
+beforeAll(() => {
+  dir = mkdtempSync(join(tmpdir(), 'lru-'))
+  g('init', '-q', '-b', 'main')
+  g('config', 'user.email', 't@t'); g('config', 'user.name', 'Tester')
+  writeFileSync(join(dir, 'README.md'), '# Hi\n')
+  mkdirSync(join(dir, 'src'))
+  writeFileSync(join(dir, 'src', 'a.ts'), 'export const a = 1\n')
+  writeFileSync(join(dir, 'bin.dat'), Buffer.from([0, 1, 2, 3]))
+  g('add', '.'); g('commit', '-qm', 'initial')
+  g('checkout', '-qb', 'feature/x')
+  writeFileSync(join(dir, 'src', 'a.ts'), 'export const a = 2\nexport const b = 3\n')
+  g('commit', '-qam', 'change a\n\nbody text')
+  g('tag', 'v1')
+  g('checkout', '-q', 'main')
+})
+
+describe('git service', () => {
+  it('opens repo and picks default ref', async () => {
+    const i = await git.openRepo(dir)
+    expect(i.currentBranch).toBe('main')
+    expect(i.defaultRef).toBe('main')
+    await expect(git.openRepo(tmpdir())).rejects.toThrow()
+  })
+  it('lists refs with ahead/behind', async () => {
+    const refs = await git.listRefs(dir)
+    const f = refs.find((r) => r.name === 'feature/x')!
+    expect(f.ahead).toBe(1); expect(f.behind).toBe(0)
+    expect(refs.some((r) => r.type === 'tag' && r.name === 'v1')).toBe(true)
+  })
+  it('lists tree dirs first with last commit', async () => {
+    const t = await git.listTree(dir, 'main', '')
+    expect(t.map((e) => e.name)).toEqual(['src', 'bin.dat', 'README.md'].sort((a, b) => (a === 'src' ? -1 : b === 'src' ? 1 : a.localeCompare(b, undefined, { sensitivity: 'base' }))))
+    expect(t[0].lastCommit?.subject).toBe('initial')
+    const sub = await git.listTree(dir, 'main', 'src')
+    expect(sub[0].name).toBe('a.ts')
+  })
+  it('reads blobs', async () => {
+    const b = await git.readBlob(dir, 'feature/x', 'src/a.ts')
+    expect(b.kind === 'text' && b.content).toContain('b = 3')
+    expect((await git.readBlob(dir, 'main', 'bin.dat')).kind).toBe('binary')
+  })
+  it('logs and commit detail', async () => {
+    const { commits } = await git.getLog(dir, { ref: 'feature/x' })
+    expect(commits.map((c) => c.subject)).toEqual(['change a', 'initial'])
+    expect(commits[0].body).toBe('body text')
+    const d = await git.getCommit(dir, commits[0].sha)
+    expect(d.files[0]).toMatchObject({ newPath: 'src/a.ts', additions: 2, deletions: 1 })
+    const root = await git.getCommit(dir, commits[1].sha)
+    expect(root.files.every((f) => f.status === 'added')).toBe(true)
+  })
+  it('compares refs', async () => {
+    const c = await git.compareRefs(dir, 'main', 'feature/x')
+    expect(c.commits).toHaveLength(1)
+    expect(c.files).toHaveLength(1)
+  })
+  it('rejects option-like refs and traversal', async () => {
+    await expect(git.getLog(dir, { ref: '--output=x' })).rejects.toThrow()
+    await expect(git.readBlob(dir, 'main', '../x')).rejects.toThrow()
+  })
+})
+
+describe('parseDiff', () => {
+  it('tracks line numbers and renames', () => {
+    const f = parseDiff('diff --git a/x b/y\nsimilarity index 90%\nrename from x\nrename to y\n--- a/x\n+++ b/y\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n')
+    expect(f[0].status).toBe('renamed')
+    expect(f[0].hunks[0].lines.map((l) => [l.type, l.oldNo, l.newNo])).toEqual([['context', 1, 1], ['del', 2, null], ['add', null, 2]])
+  })
+})
