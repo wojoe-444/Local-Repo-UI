@@ -4,6 +4,7 @@
   "description": "GitHub-style browsing UI for local git repositories. Everything stays on your machine.",
   "main": "./out/main/index.js",
   "scripts": {
+    "postinstall": "install-electron",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",

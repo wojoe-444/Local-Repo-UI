@@ -18,7 +18,7 @@ Browsing is read-only and works on committed content at any ref, so your working
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 22.12+ (required by Electron 45)
 - `git` available on `PATH`
 
 ## Develop
