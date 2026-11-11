@@ -13,6 +13,7 @@ import IssuesPage from './pages/IssuesPage'
 import IssuePage from './pages/IssuePage'
 import NewIssuePage from './pages/NewIssuePage'
 import ClonePage from './pages/ClonePage'
+import SettingsPage from './pages/SettingsPage'
 
 /** Code-browsing routes need a local checkout; GitHub-only repos are sent to the clone-linking page. */
 function RequireLocal({ children }: { children: JSX.Element }): JSX.Element {
@@ -31,6 +32,7 @@ export default function App(): JSX.Element {
       <RepoProvider>
         <Routes>
           <Route path="/" element={<Welcome />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/repo" element={<RepoLayout />}>
             <Route index element={<RepoIndex />} />
             <Route path="tree" element={<RequireLocal><TreePage /></RequireLocal>} />

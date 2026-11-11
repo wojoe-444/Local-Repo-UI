@@ -7,8 +7,10 @@ import { GITHUB_API, GithubError, assertRepoId, createGithubClient, fetchAvatar 
 import { createIssueService } from './issue-service'
 import { createLocalIssues } from './local-issues'
 import { createSettings } from './settings'
+import { createUpdateService } from './updater'
 import { createVault } from './vault'
-import type { RepoApi } from '../shared/api'
+import { autoUpdater } from 'electron-updater'
+import { UPDATE_STATE_EVENT, type RepoApi } from '../shared/api'
 import type { AuthStatus, GithubRepo, RepoInfo } from '../shared/types'
 
 /** Repos the user has explicitly opened this session; IPC refuses to touch any other path. */
@@ -40,6 +42,12 @@ function registerIpc(): void {
     localAuthor: async (repo) => ({ login: (await git.gitUserName(repo)) ?? 'You', avatarUrl: null })
   })
   const avatars = new Map<string, string | null>()
+  const updates = createUpdateService({
+    updater: autoUpdater,
+    currentVersion: app.getVersion(),
+    supported: app.isPackaged,
+    onState: (st) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(UPDATE_STATE_EVENT, st) }
+  })
   let existingLogin: Promise<AuthStatus> | null = null
 
   const withClone = async (r: GithubRepo): Promise<GithubRepo> => {
@@ -155,7 +163,12 @@ function registerIpc(): void {
     issuesUpdate: async (t, n, p) => { await vault.load(); return issues.update(t, n, p) },
     issuesComment: async (t, n, b) => { await vault.load(); return issues.comment(t, n, b) },
     labelsList: async (t) => { await vault.load(); return issues.labels(t) },
-    labelsCreate: async (t, i) => { await vault.load(); return issues.createLabel(t, i) }
+    labelsCreate: async (t, i) => { await vault.load(); return issues.createLabel(t, i) },
+
+    updateGetState: async () => updates.getState(),
+    updateCheck: () => updates.check(),
+    updateDownload: () => updates.download(),
+    updateInstall: async () => { updates.install() }
   }
 
   for (const [name, fn] of Object.entries(handlers)) {
@@ -175,6 +188,10 @@ function createWindow(): void {
   if (process.env['ELECTRON_RENDERER_URL']) win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   else win.loadFile(join(__dirname, '../renderer/index.html'))
 }
+
+// Pin the data folder to the one `npm run dev` already uses (named after package.json's "name"), so the installed app
+// (whose product name is "Local Repo UI") sees the same local issues, settings and sign-in instead of an empty folder.
+if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', join(app.getPath('appData'), 'local-repo-ui'))
 
 app.whenReady().then(() => {
   registerIpc()

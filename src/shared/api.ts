@@ -1,7 +1,7 @@
 import type {
   AuthStatus, BlobResult, CommitDetail, CommitSummary, CompareResult, GithubRepo, Issue, IssueComment, IssueCreateInput,
   IssueDetail, IssueLabel, IssueList, IssueListOptions, IssueTarget, IssueUpdateInput, LabelCreateInput, LogOptions,
-  RefInfo, RepoInfo, TreeEntry
+  RefInfo, RepoInfo, TreeEntry, UpdateState
 } from './types'
 
 /**
@@ -49,13 +49,29 @@ export interface RepoApi {
   issuesComment(target: IssueTarget, number: number, body: string): Promise<IssueComment>
   labelsList(target: IssueTarget): Promise<IssueLabel[]>
   labelsCreate(target: IssueTarget, input: LabelCreateInput): Promise<IssueLabel>
+
+  // App updates (GitHub Releases of this app). Network is only used when the user asks: check, then download.
+  updateGetState(): Promise<UpdateState>
+  updateCheck(): Promise<UpdateState>
+  updateDownload(): Promise<UpdateState>
+  /** Quits, installs the downloaded update and relaunches. */
+  updateInstall(): Promise<void>
 }
+
+/** Push events from the main process, exposed next to the invoke-style calls. */
+export interface RepoEvents {
+  /** Subscribes to updater state changes; returns an unsubscribe function. */
+  onUpdateState(cb: (s: UpdateState) => void): () => void
+}
+
+export const UPDATE_STATE_EVENT = 'update-state'
 
 export const CHANNELS = [
   'pickRepoFolder', 'openRepo', 'listRefs', 'listTree', 'readBlob', 'getLog', 'countCommits', 'getCommit', 'compareRefs',
   'openExternal', 'authStatus', 'authSignIn', 'authUseExistingLogin', 'authSignOut', 'githubListRepos', 'githubGetRepo', 'githubAvatar',
   'getClonePath', 'linkClone', 'getRepoPrefs', 'setRepoLocalOnly',
-  'issuesList', 'issuesGet', 'issuesCreate', 'issuesUpdate', 'issuesComment', 'labelsList', 'labelsCreate'
+  'issuesList', 'issuesGet', 'issuesCreate', 'issuesUpdate', 'issuesComment', 'labelsList', 'labelsCreate',
+  'updateGetState', 'updateCheck', 'updateDownload', 'updateInstall'
 ] as const
 
 // Compile-time check that every RepoApi method has a channel.
