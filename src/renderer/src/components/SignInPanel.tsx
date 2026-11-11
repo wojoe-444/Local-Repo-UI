@@ -7,7 +7,7 @@ const TOKEN_URL = 'https://github.com/settings/tokens/new?scopes=repo,read:org&d
 
 /** Signs in with a personal access token. The token is sent to the main process and never kept in the renderer. */
 export default function SignInPanel(): JSX.Element {
-  const { status, signIn } = useAuth()
+  const { status, signIn, signInExisting } = useAuth()
   const [token, setToken] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,11 +18,24 @@ export default function SignInPanel(): JSX.Element {
     signIn(token.trim()).then(() => setToken(''), (e) => setError(errMsg(e))).finally(() => setBusy(false))
   }
 
+  const useExisting = (): void => {
+    setBusy(true)
+    setError(null)
+    signInExisting().catch((e) => setError(errMsg(e))).finally(() => setBusy(false))
+  }
+
   return (
     <div className="box signin">
       <div className="box-head"><GithubIcon /> <strong>Sign in to GitHub</strong></div>
       <div className="pad">
         <p>Sign in to see your GitHub repositories next to your local ones, including organization repositories you can access, and to work with their issues live.</p>
+        <div className="existing">
+          <button type="button" className="btn primary" disabled={busy} onClick={useExisting}>Use my existing GitHub login</button>
+          <div className="muted small">
+            Looks for a login you already have on this computer (the GitHub CLI, or the Git Credential Manager entry for github.com). It is read once when you click, then stored encrypted like a pasted token. It carries whatever permissions that login already has.
+          </div>
+        </div>
+        <div className="muted small or">or use a token</div>
         <ol className="steps">
           <li>
             <button type="button" className="btn" onClick={() => window.api.openExternal(TOKEN_URL).catch(() => undefined)}>Create a token on GitHub</button>
