@@ -40,6 +40,7 @@ function registerIpc(): void {
     localAuthor: async (repo) => ({ login: (await git.gitUserName(repo)) ?? 'You', avatarUrl: null })
   })
   const avatars = new Map<string, string | null>()
+  let existingLogin: Promise<AuthStatus> | null = null
 
   const withClone = async (r: GithubRepo): Promise<GithubRepo> => {
     const p = await settings.getClone(r.owner, r.name)
@@ -94,14 +95,21 @@ function registerIpc(): void {
       if (typeof token !== 'string') throw new Error('That does not look like a GitHub token')
       return completeSignIn(token.trim())
     },
-    authUseExistingLogin: async () => {
-      const found = await findGithubToken()
-      if (!found) throw new Error('No existing GitHub login found. Install and sign in with the GitHub CLI (gh auth login), or paste a token instead.')
-      try {
-        return await completeSignIn(found.token)
-      } catch (e) {
-        throw new Error(`Found a credential from ${found.source === 'gh' ? 'the GitHub CLI' : 'git’s credential helper'}, but GitHub did not accept it for API use. Paste a token instead. (${e instanceof Error ? e.message : e})`)
-      }
+    authUseExistingLogin: () => {
+      // One lookup at a time: repeated clicks must not spawn a pile of processes.
+      existingLogin ??= (async () => {
+        const found = await findGithubToken()
+        if (!found) throw new Error('No existing GitHub login found. Install and sign in with the GitHub CLI (gh auth login), or paste a token instead.')
+        try {
+          return await completeSignIn(found.token)
+        } catch (e) {
+          // Only explain credential problems this way; storage or network failures keep their own message.
+          const credentialProblem = e instanceof GithubError || (e instanceof Error && /^(GitHub rejected|That does not look)/.test(e.message))
+          if (!(e instanceof Error) || !credentialProblem) throw e
+          throw new Error(`Found a credential from ${found.source === 'gh' ? 'the GitHub CLI' : 'git’s credential helper'}, but GitHub did not accept it for API use. Paste a token instead. (${e.message})`)
+        }
+      })().finally(() => { existingLogin = null })
+      return existingLogin
     },
     authSignOut: async () => { await vault.clear(); return vault.status() },
     githubListRepos: async () => {

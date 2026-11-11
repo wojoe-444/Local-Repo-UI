@@ -32,7 +32,7 @@ export default function SignInPanel(): JSX.Element {
         <div className="existing">
           <button type="button" className="btn primary" disabled={busy} onClick={useExisting}>Use my existing GitHub login</button>
           <div className="muted small">
-            Looks for a login you already have on this computer (the GitHub CLI, or the Git Credential Manager entry for github.com). It is read once when you click, then stored encrypted like a pasted token.
+            Looks for a login you already have on this computer (the GitHub CLI, or the Git Credential Manager entry for github.com). It is read once when you click, then stored encrypted like a pasted token. It carries whatever permissions that login already has.
           </div>
         </div>
         <div className="muted small or">or use a token</div>
