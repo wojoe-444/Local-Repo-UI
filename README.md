@@ -28,7 +28,7 @@ Where the issues live depends on the repository:
 
 ## GitHub account
 
-Sign in from the home page with a personal access token (the page links to GitHub's token form with the `repo` and `read:org` scopes pre-selected). The app then lists every repository you can access, with filters for **Yours**, **Organizations** and **Shared with you**, so organization repositories you do not own show up too. For organizations with SAML SSO, authorize the token for the organization on GitHub.
+Sign in from the home page (the **Sign in to GitHub** box under *Open a repository…*). Either click **Use my existing GitHub login**, which reads the token from the GitHub CLI (`gh auth token`) or from git's credential helper for github.com (Git Credential Manager on Windows) once, on click, or paste a personal access token (the page links to GitHub's token form with the `repo` and `read:org` scopes pre-selected). The app then lists every repository you can access, with filters for **Yours**, **Organizations** and **Shared with you**, so organization repositories you do not own show up too. For organizations with SAML SSO, authorize the token for the organization on GitHub.
 
 - The token is encrypted with the OS secure storage (DPAPI on Windows, via Electron `safeStorage`) and stored in the app data folder. If secure storage is unavailable it is only kept in memory until you close the app.
 - The token only exists in the main process. The renderer never sees it, and cannot make network requests.

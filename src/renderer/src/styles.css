@@ -155,3 +155,4 @@ input.search.wide { width: 100%; }
 .update-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .flash.ok { background: var(--addbg); border-color: var(--green); } .flash.info { background: rgba(56,139,253,.1); border-color: #1f6feb66; }
 .progress { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; margin-top: 6px; } .progress span { display: block; height: 100%; background: var(--green); transition: width .2s; }
+.signin .existing { display: grid; gap: 6px; justify-items: start; } .signin .or { margin: 14px 0 6px; }
