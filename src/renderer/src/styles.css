@@ -92,3 +92,59 @@ table.diff tr.hunk td { background: rgba(56,139,253,.15); color: var(--muted); }
 .row-link:hover { background: var(--bg2); }
 .flash { padding: 10px 14px; border-radius: 6px; margin: 12px 0; text-align: left; border: 1px solid var(--border); }
 .flash.error { background: var(--delbg); border-color: var(--red); } .flash.warn { background: rgba(187,128,9,.15); border-color: #9e6a03; }
+
+/* ---- GitHub account + issues ---- */
+:root { --purple: #ab7df8; }
+.nowrap { white-space: nowrap; } .grow { flex: 1; } .left { text-align: left; }
+.linklike { all: unset; color: var(--link); cursor: pointer; } .linklike:hover { text-decoration: underline; }
+.btn.icon { padding: 2px 6px; background: transparent; border-color: transparent; color: var(--muted); } .btn.icon:hover { background: var(--bg3); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary:hover:not(:disabled) { background: #2ea043; }
+.account { display: inline-flex; align-items: center; gap: 8px; }
+.welcome { max-width: 860px; } .welcome-top { display: flex; margin-bottom: 8px; }
+.signin { margin-top: 24px; text-align: left; } .signin .pad > :first-child { margin-top: 0; }
+.steps { padding-left: 20px; display: grid; gap: 14px; }
+.signin-form { display: flex; gap: 8px; margin-top: 6px; } .signin-form input { flex: 1; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font: inherit; }
+.repo-filter { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; } .repo-filter .search { flex: 1; }
+.repo-row { justify-content: space-between; align-items: center; gap: 16px; } .repo-row-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.repo-row .badge { display: inline-flex; gap: 4px; align-items: center; }
+
+.source-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 6px; margin-bottom: 16px; border: 1px solid var(--border); background: var(--bg2); font-size: 13px; }
+.source-bar.github { border-color: #1f6feb66; background: rgba(56,139,253,.1); }
+.source-bar.local { border-color: #23863666; background: rgba(46,160,67,.1); }
+.badge svg { vertical-align: -3px; }
+
+.label-pill { display: inline-block; padding: 0 8px; border-radius: 2em; font-size: 12px; font-weight: 500; line-height: 18px; margin-left: 6px; border: 1px solid rgba(240,246,252,.1); }
+.label-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; margin-top: 4px; }
+.label-create { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.label-create input[type=color] { width: 32px; height: 28px; padding: 0; min-width: 0; border: 1px solid var(--border); background: none; }
+
+input.search.wide { width: 100%; }
+.filters { margin-bottom: 8px; }
+.issue-tabs { gap: 16px; } .issue-tabs a { color: var(--muted); display: inline-flex; gap: 6px; align-items: center; } .issue-tabs a.active { color: var(--fg); font-weight: 600; }
+.issue-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); } .issue-row:hover { background: var(--bg2); }
+.issue-main { flex: 1; min-width: 0; } .issue-title { color: var(--fg); font-weight: 600; font-size: 15px; } .issue-title:hover { color: var(--link); }
+.issue-icon { margin-top: 3px; } .issue-icon.open { color: var(--green); } .issue-icon.closed { color: var(--purple); } .issue-icon.skipped { color: var(--muted); }
+.comments { display: inline-flex; gap: 4px; align-items: center; margin-top: 3px; }
+.pager { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 8px 0 24px; }
+
+.issue-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.issue-heading { display: flex; gap: 8px; align-items: center; font-size: 28px; font-weight: 400; margin: 0 0 8px; overflow-wrap: anywhere; } .issue-heading .btn.primary { font-size: 13px; }
+.title-edit { display: flex; gap: 8px; margin-bottom: 8px; } .title-input { flex: 1; width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 16px; margin-bottom: 12px; } .title-edit .title-input { margin-bottom: 0; }
+.issue-meta { display: flex; gap: 12px; align-items: center; }
+.state-pill { display: inline-flex; gap: 6px; align-items: center; padding: 3px 12px; border-radius: 2em; color: #fff; font-weight: 500; font-size: 13px; }
+.state-pill.open { background: #238636; } .state-pill.closed { background: #8957e5; } .state-pill.skipped { background: #6e7681; }
+.issue-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 24px; align-items: start; }
+.timeline { display: flex; flex-direction: column; gap: 16px; }
+.comment { display: flex; gap: 12px; align-items: flex-start; } .comment-box { flex: 1; min-width: 0; margin-bottom: 0; } .comment-box .box-head { padding: 8px 16px; font-size: 13px; }
+.comment-form, .comment-edit { flex: 1; min-width: 0; } .avatar-spacer { width: 40px; flex: none; }
+.event { display: flex; gap: 10px; align-items: center; padding-left: 12px; font-size: 13px; }
+.event-badge { display: inline-flex; padding: 4px; border-radius: 50%; color: #fff; } .event-badge.open { background: #238636; } .event-badge.closed { background: #8957e5; } .event-badge.skipped { background: #6e7681; }
+.avatar { object-fit: cover; }
+.composer textarea { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font: inherit; resize: vertical; margin-top: 8px; }
+.composer-preview { min-height: 120px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; margin-top: 8px; } .composer-hint { margin-top: 4px; }
+.markdown { font-size: 14px; } .box .markdown > :first-child { margin-top: 0; } .box .markdown > :last-child { margin-bottom: 0; }
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.issue-side { display: flex; flex-direction: column; gap: 16px; } .side-section { padding-bottom: 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.side-title { font-size: 12px; font-weight: 600; color: var(--muted); } .side-list { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; } .side-list .label-pill { margin-left: 0; } .assignee { display: inline-flex; gap: 6px; align-items: center; }
+.new-issue .issue-grid { grid-template-columns: minmax(0, 1fr) 240px; }
