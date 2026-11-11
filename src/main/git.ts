@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { basename } from 'path'
 import type {
   BlobResult, CommitDetail, CommitSummary, CompareResult, LogOptions,
-  RefInfo, RepoInfo, TreeEntry
+  GithubRemote, RefInfo, RepoInfo, TreeEntry
 } from '../shared/types'
 import { parseDiff } from './diff'
 
@@ -44,6 +44,31 @@ export function assertPath(p: string): string {
   return clean
 }
 
+/** Extracts owner/name from the URL forms git uses for github.com remotes (https, scp-style ssh, ssh://, git://). */
+export function parseGithubRemote(url: string): { owner: string; name: string } | null {
+  const m =
+    /^(?:https?|git|ssh):\/\/(?:[^@/]+@)?(?:www\.)?github\.com(?::\d+)?\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?\/?$/i.exec(url.trim()) ??
+    /^(?:[^@/\s]+@)?github\.com:([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?\/?$/i.exec(url.trim())
+  return m ? { owner: m[1], name: m[2] } : null
+}
+
+/** The github.com repo the checkout's remotes point at, preferring `origin`. Reads config only; no network. */
+export async function findGithubRemote(repo: string): Promise<GithubRemote | null> {
+  const out = await text(repo, ['config', '--get-regexp', '^remote\\..*\\.url$']).catch(() => '')
+  const found: GithubRemote[] = []
+  for (const line of out.split('\n')) {
+    const m = /^remote\.(.+)\.url (.+)$/.exec(line.trim())
+    const parsed = m && parseGithubRemote(m[2])
+    if (m && parsed) found.push({ ...parsed, remote: m[1] })
+  }
+  return found.find((r) => r.remote === 'origin') ?? found[0] ?? null
+}
+
+/** `user.name` from the repo's git config, used to attribute local issues. */
+export async function gitUserName(repo: string): Promise<string | null> {
+  return (await text(repo, ['config', '--get', 'user.name']).catch(() => '')).trim() || null
+}
+
 export async function openRepo(dir: string): Promise<RepoInfo> {
   let root: string
   try {
@@ -57,7 +82,8 @@ export async function openRepo(dir: string): Promise<RepoInfo> {
   const branches = (await text(root, ['for-each-ref', '--format=%(refname:short)', 'refs/heads'])).split('\n').filter(Boolean)
   let defaultRef: string | null = currentBranch
   if (!defaultRef) defaultRef = ['main', 'master'].find((b) => branches.includes(b)) ?? branches[0] ?? (headSha ? 'HEAD' : null)
-  return { path: root, name: basename(root), currentBranch, headSha, isEmpty: !headSha && branches.length === 0, defaultRef }
+  const githubRemote = await findGithubRemote(root)
+  return { path: root, name: basename(root), currentBranch, headSha, isEmpty: !headSha && branches.length === 0, defaultRef, githubRemote }
 }
 
 export async function listRefs(repo: string): Promise<RefInfo[]> {

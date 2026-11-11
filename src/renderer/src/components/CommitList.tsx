@@ -3,10 +3,11 @@ import type { CommitSummary } from '@shared/types'
 import { commitLink, treeLink } from '../links'
 import { dayKey, fullDate, timeAgo } from '../util'
 
-export function Avatar({ name }: { name: string }): JSX.Element {
+export function Avatar({ name, size }: { name: string; size?: number }): JSX.Element {
   let h = 0
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360
-  return <span className="avatar" style={{ background: `hsl(${h} 45% 40%)` }}>{(name[0] ?? '?').toUpperCase()}</span>
+  const sz = size ? { width: size, height: size, fontSize: Math.round(size * 0.5) } : {}
+  return <span className="avatar" style={{ background: `hsl(${h} 45% 40%)`, ...sz }}>{(name[0] ?? '?').toUpperCase()}</span>
 }
 
 export default function CommitList({ commits }: { commits: CommitSummary[] }): JSX.Element {

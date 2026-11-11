@@ -42,3 +42,7 @@ export function languageFor(path: string): string | undefined {
   if (name === 'makefile') return 'makefile'
   return EXT_LANG[name.split('.').pop() ?? '']
 }
+
+/** Strips Electron's "Error invoking remote method" wrapper from an IPC error. */
+export const errMsg = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '\w+': (\w*Error: )?/, '')

@@ -25,6 +25,29 @@ beforeAll(() => {
   g('checkout', '-q', 'main')
 })
 
+describe('github remote detection', () => {
+  it('parses every common remote URL form', () => {
+    for (const url of [
+      'https://github.com/acme/app.git', 'https://github.com/acme/app', 'https://user:tok@github.com/acme/app.git',
+      'git@github.com:acme/app.git', 'ssh://git@github.com/acme/app.git', 'git://github.com/acme/app.git', 'https://github.com/acme/app/'
+    ]) expect(git.parseGithubRemote(url), url).toEqual({ owner: 'acme', name: 'app' })
+    expect(git.parseGithubRemote('https://github.com/acme/my.repo.git')).toEqual({ owner: 'acme', name: 'my.repo' })
+    for (const url of ['https://gitlab.com/acme/app.git', 'https://github.com.evil.io/acme/app', 'C:\\repos\\app', '/srv/git/app.git', 'https://github.com/acme'])
+      expect(git.parseGithubRemote(url), url).toBeNull()
+  })
+  it('finds the remote from config, preferring origin, and is null for local-only repos', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'lru-remote-'))
+    execFileSync('git', ['init', '-q'], { cwd: d })
+    expect(await git.findGithubRemote(d)).toBeNull()
+    execFileSync('git', ['remote', 'add', 'fork', 'git@github.com:me/app.git'], { cwd: d })
+    expect(await git.findGithubRemote(d)).toEqual({ owner: 'me', name: 'app', remote: 'fork' })
+    execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/acme/app.git'], { cwd: d })
+    expect(await git.findGithubRemote(d)).toEqual({ owner: 'acme', name: 'app', remote: 'origin' })
+    expect((await git.openRepo(d)).githubRemote?.owner).toBe('acme')
+    expect((await git.openRepo(dir)).githubRemote).toBeNull()
+  })
+})
+
 describe('git service', () => {
   it('opens repo and picks default ref', async () => {
     const i = await git.openRepo(dir)
