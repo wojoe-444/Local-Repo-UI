@@ -65,11 +65,18 @@ export default function Welcome(): JSX.Element {
   const recents = loadRecents()
   return (
     <div className="welcome">
-      <div className="welcome-top"><span className="spacer" /><AccountMenu /></div>
+      <div className="welcome-top"><span className="spacer" /><AccountMenu hideSignIn /></div>
       <h1>Local Repo UI</h1>
       <p className="muted">Browse any local git repository the way you would on GitHub. Local-only repositories never leave this machine. Repositories on GitHub work live once you sign in.</p>
       <button className="btn primary big" onClick={() => pick().then(() => nav('/repo/tree'), () => undefined)}>Open a repository…</button>
       {error && <div className="flash error">{error}</div>}
+      {/* Signing in comes first, right under the open button, so it is never pushed below a long list of recents. */}
+      {auth.statusError && (
+        <div className="flash error">
+          Could not read your GitHub account state: {auth.statusError}. If you just updated the app, quit it completely and start it again.
+        </div>
+      )}
+      {auth.status && !signedIn && <div className="left"><SignInPanel /></div>}
       {recents.length > 0 && (
         <div className="box recents">
           <div className="box-head">Recent local repositories</div>
@@ -78,7 +85,7 @@ export default function Welcome(): JSX.Element {
           ))}
         </div>
       )}
-      {auth.status && (signedIn ? <GithubRepos /> : <div className="left"><SignInPanel /></div>)}
+      {signedIn && <GithubRepos />}
     </div>
   )
 }

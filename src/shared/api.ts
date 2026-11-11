@@ -27,6 +27,8 @@ export interface RepoApi {
   // GitHub account (token lives in the main process only, encrypted with the OS keychain when available)
   authStatus(): Promise<AuthStatus>
   authSignIn(token: string): Promise<AuthStatus>
+  /** Reuses the token from the GitHub CLI or git's credential helper. Only runs when the user asks for it. */
+  authUseExistingLogin(): Promise<AuthStatus>
   authSignOut(): Promise<AuthStatus>
   githubListRepos(): Promise<GithubRepo[]>
   githubGetRepo(owner: string, name: string): Promise<GithubRepo>
@@ -51,7 +53,7 @@ export interface RepoApi {
 
 export const CHANNELS = [
   'pickRepoFolder', 'openRepo', 'listRefs', 'listTree', 'readBlob', 'getLog', 'countCommits', 'getCommit', 'compareRefs',
-  'openExternal', 'authStatus', 'authSignIn', 'authSignOut', 'githubListRepos', 'githubGetRepo', 'githubAvatar',
+  'openExternal', 'authStatus', 'authSignIn', 'authUseExistingLogin', 'authSignOut', 'githubListRepos', 'githubGetRepo', 'githubAvatar',
   'getClonePath', 'linkClone', 'getRepoPrefs', 'setRepoLocalOnly',
   'issuesList', 'issuesGet', 'issuesCreate', 'issuesUpdate', 'issuesComment', 'labelsList', 'labelsCreate'
 ] as const
