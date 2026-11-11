@@ -148,3 +148,10 @@ input.search.wide { width: 100%; }
 .issue-side { display: flex; flex-direction: column; gap: 16px; } .side-section { padding-bottom: 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
 .side-title { font-size: 12px; font-weight: 600; color: var(--muted); } .side-list { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; } .side-list .label-pill { margin-left: 0; } .assignee { display: inline-flex; gap: 6px; align-items: center; }
 .new-issue .issue-grid { grid-template-columns: minmax(0, 1fr) 240px; }
+
+/* ---- Settings / updates ---- */
+.settings { max-width: 720px; }
+.update-box { display: grid; gap: 12px; } .update-box .flash { margin: 0; }
+.update-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.flash.ok { background: var(--addbg); border-color: var(--green); } .flash.info { background: rgba(56,139,253,.1); border-color: #1f6feb66; }
+.progress { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; margin-top: 6px; } .progress span { display: block; height: 100%; background: var(--green); transition: width .2s; }

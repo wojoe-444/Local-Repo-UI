@@ -47,8 +47,32 @@ npm run dev        # Electron with hot reload
 npm test           # git service tests (creates temp repos)
 npm run typecheck
 npm run build
-npm run dist       # Windows installer via electron-builder
+npm run dist       # Windows installer in ./release (Local-Repo-UI-Setup-<version>.exe), nothing published
 ```
+
+## Install and update (Windows)
+
+Releases are built by GitHub Actions and published on the repository's Releases page.
+
+**Publish a release** (from a clean `main`; the tag must equal the version in `package.json`):
+
+```powershell
+npm version 0.2.0 --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "Release 0.2.0"
+git push
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The `Release` workflow builds `Local-Repo-UI-Setup-0.2.0.exe` plus `latest.yml` and attaches them to a release for that tag.
+
+**Install:** download the `.exe` from the latest release and run it. It installs per user (no admin rights) and adds a Start menu entry.
+The installer is not code-signed, so Windows SmartScreen shows "Windows protected your PC": choose **More info**, then **Run anyway**.
+
+**Update:** open **Settings** (top right), press **Check for updates**. If a newer release exists, press **Download**, then **Restart and update**.
+Nothing is checked in the background; the app only contacts GitHub when you press the button. Updates are verified against the SHA-512 in `latest.yml`.
+This relies on the repository's releases being readable without a token, so keep the repo public (or add a token-based feed before making it private).
 
 ## Layout
 

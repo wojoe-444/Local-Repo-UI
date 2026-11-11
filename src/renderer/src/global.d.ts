@@ -1,4 +1,4 @@
-import type { RepoApi } from '@shared/api'
+import type { RepoApi, RepoEvents } from '@shared/api'
 import type { JSX as ReactJSX } from 'react'
 
 declare global {
@@ -6,5 +6,5 @@ declare global {
   namespace JSX {
     type Element = ReactJSX.Element
   }
-  interface Window { api: RepoApi }
+  interface Window { api: RepoApi & RepoEvents }
 }

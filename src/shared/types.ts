@@ -223,3 +223,16 @@ export interface LabelCreateInput {
   color: string
   description?: string
 }
+
+/** Where the in-app updater stands. Updates only ever start when the user presses a button. */
+export interface UpdateState {
+  status: 'unsupported' | 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'downloaded' | 'error'
+  currentVersion: string
+  /** The newer version, once one has been found. */
+  version?: string
+  /** 0-100 while downloading. */
+  percent?: number
+  error?: string
+  /** Epoch ms of the last completed check that found nothing newer. */
+  checkedAt?: number
+}
