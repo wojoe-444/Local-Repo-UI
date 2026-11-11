@@ -17,8 +17,8 @@ export function createSettings(dir: string, platform: NodeJS.Platform = process.
   const file = join(dir, 'settings.json')
   const queue = createKeyedQueue()
   const load = async (): Promise<SettingsFile> => {
-    const s = await readJson<Partial<SettingsFile>>(file, EMPTY)
-    return { version: 1, localOnly: Array.isArray(s.localOnly) ? s.localOnly : [], clones: s.clones && typeof s.clones === 'object' ? s.clones : {} }
+    const s = (await readJson<Partial<SettingsFile> | null>(file, EMPTY)) ?? EMPTY
+    return { version: 1, localOnly: Array.isArray(s.localOnly) ? [...s.localOnly] : [], clones: s.clones && typeof s.clones === 'object' && !Array.isArray(s.clones) ? { ...s.clones } : {} }
   }
   const update = (fn: (s: SettingsFile) => void): Promise<void> =>
     queue(file, async () => { const s = await load(); fn(s); await writeJsonAtomic(file, s) })

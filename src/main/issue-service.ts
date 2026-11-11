@@ -37,7 +37,7 @@ export function createIssueService(d: IssueServiceDeps) {
     async list(t: IssueTarget, o: IssueListOptions): Promise<IssueList> {
       const r = resolve(t)
       if (o?.state !== 'open' && o?.state !== 'closed') throw new IssueInputError('Invalid state')
-      const opts: IssueListOptions = { state: o.state, page: typeof o.page === 'number' ? o.page : 1, labels: Array.isArray(o.labels) ? o.labels.filter((l) => typeof l === 'string') : undefined, query: typeof o.query === 'string' ? o.query : undefined }
+      const opts: IssueListOptions = { state: o.state, page: typeof o.page === 'number' && Number.isSafeInteger(o.page) && o.page > 0 ? o.page : 1, labels: Array.isArray(o.labels) ? o.labels.filter((l) => typeof l === 'string') : undefined, query: typeof o.query === 'string' ? o.query : undefined }
       return r.kind === 'local' ? d.local.list(r.repo, opts) : d.gh.listIssues(r.owner, r.name, opts)
     },
     async get(t: IssueTarget, n: number): Promise<IssueDetail> {

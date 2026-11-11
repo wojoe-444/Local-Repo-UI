@@ -104,6 +104,7 @@ export interface AuthStatus {
   signedIn: boolean
   login: string | null
   name: string | null
+  /** A data: URL (fetched at sign-in), never a remote URL. */
   avatarUrl: string | null
   /** False when the OS cannot encrypt secrets: the token is then held in memory for this session only. */
   canPersist: boolean

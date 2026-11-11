@@ -125,3 +125,23 @@ describe('settings', () => {
     expect(await createSettings(dir).getClone('org', 'REPO')).toBe('/clones/repo')
   })
 })
+
+describe('robustness', () => {
+  it('survives a store file of the wrong shape and keeps the old one aside', async () => {
+    const li = createLocalIssues(dir, 'linux')
+    await li.create('/r', { title: 'x' }, me)
+    const sub = join(dir, 'local-issues')
+    writeFileSync(join(sub, readdirSync(sub)[0]), '{"hello":1}')
+    expect((await li.list('/r', { state: 'open', page: 1 })).issues).toEqual([])
+    expect(readdirSync(sub).some((f) => f.includes('.corrupt-'))).toBe(true)
+  })
+
+  it('settings tolerate a null file and do not leak state between data folders', async () => {
+    const a = createSettings(dir, 'linux')
+    await a.setClone('o', 'r', '/x')
+    writeFileSync(join(dir, 'settings.json'), 'null')
+    expect(await a.getClone('o', 'r')).toBeNull()
+    const other = createSettings(mkdtempSync(join(tmpdir(), 'lru-set-')), 'linux')
+    expect(await other.getClone('o', 'r')).toBeNull()
+  })
+})

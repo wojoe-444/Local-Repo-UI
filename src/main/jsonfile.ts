@@ -18,13 +18,26 @@ export async function readJson<T>(file: string, fallback: T): Promise<T> {
   }
 }
 
+/** On Windows, antivirus or indexers can briefly hold the target open, making rename fail with EPERM/EBUSY. */
+async function renameWithRetry(from: string, to: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await rename(from, to)
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      if (attempt >= 4 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e
+      await new Promise((r) => setTimeout(r, 25 * (attempt + 1)))
+    }
+  }
+}
+
 /** Writes via a temp file + rename so a crash mid-write cannot leave a truncated file. */
 export async function writeJsonAtomic(file: string, data: unknown): Promise<void> {
   await mkdir(dirname(file), { recursive: true })
   const tmp = `${file}.${process.pid}.tmp`
   try {
     await writeFile(tmp, JSON.stringify(data, null, 2), 'utf8')
-    await rename(tmp, file)
+    await renameWithRetry(tmp, file)
   } catch (e) {
     await rm(tmp, { force: true }).catch(() => undefined)
     throw e

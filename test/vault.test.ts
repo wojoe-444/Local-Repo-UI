@@ -48,3 +48,31 @@ describe('token vault', () => {
     expect((await createVault(dir, box()).status()).signedIn).toBe(false)
   })
 })
+
+describe('token vault concurrency', () => {
+  it('concurrent first calls all see the stored sign-in', async () => {
+    await createVault(dir, box()).save('tok'.repeat(10), who)
+    const v = createVault(dir, box())
+    const [a, b, c] = await Promise.all([v.status(), v.load().then(() => v.getToken()), v.status()])
+    expect(a.signedIn).toBe(true)
+    expect(c.signedIn).toBe(true)
+    expect(b).toBe('tok'.repeat(10))
+  })
+
+  it('does not end up signed in when persisting fails', async () => {
+    const v = createVault(dir, box({ encryptString: () => { throw new Error('keyring locked') } }))
+    await expect(v.save('tok'.repeat(10), who)).rejects.toThrow('keyring locked')
+    expect(v.getToken()).toBeNull()
+    expect((await v.status()).signedIn).toBe(false)
+    expect(existsSync(join(dir, 'github-token.bin'))).toBe(false)
+  })
+
+  it('a slow initial load cannot resurrect a token after sign-out', async () => {
+    await createVault(dir, box()).save('tok'.repeat(10), who)
+    const v = createVault(dir, box())
+    const pending = v.load()
+    await v.clear()
+    await pending
+    expect(v.getToken()).toBeNull()
+  })
+})

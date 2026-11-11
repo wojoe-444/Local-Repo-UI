@@ -1,4 +1,4 @@
-import { chmod, rm, readFile, writeFile, mkdir } from 'fs/promises'
+import { chmod, rename, rm, readFile, writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import type { AuthStatus } from '../shared/types'
 import { readJson, writeJsonAtomic } from './jsonfile'
@@ -12,6 +12,7 @@ export interface SecretBox {
   getSelectedStorageBackend?(): string
 }
 
+/** `avatarUrl` is a data: URL fetched once at sign-in, so showing who is signed in never needs the network. */
 export interface Profile { login: string; name: string | null; avatarUrl: string | null }
 
 /**
@@ -23,7 +24,9 @@ export function createVault(dir: string, box: SecretBox) {
   const profileFile = join(dir, 'github-profile.json')
   let token: string | null = null
   let profile: Profile | null = null
-  let loaded = false
+  let loading: Promise<void> | null = null
+  /** Set once sign-in/out has changed the state, so a slower initial load can never overwrite it. */
+  let touched = false
 
   const canPersist = (): boolean => {
     try {
@@ -31,18 +34,21 @@ export function createVault(dir: string, box: SecretBox) {
     } catch { return false }
   }
 
-  async function load(): Promise<void> {
-    if (loaded) return
-    loaded = true
-    if (!canPersist()) return
-    try {
-      token = box.decryptString(await readFile(tokenFile))
-      profile = await readJson<Profile | null>(profileFile, null)
-    } catch {
-      // Missing, or encrypted under another OS account/machine: treat as signed out.
-      token = null
-      profile = null
-    }
+  /** Concurrent callers share one load: a second caller must not see the empty state while the first is still reading. */
+  function load(): Promise<void> {
+    loading ??= (async () => {
+      if (!canPersist()) return
+      try {
+        const t = box.decryptString(await readFile(tokenFile))
+        const p = await readJson<Profile | null>(profileFile, null)
+        if (touched) return
+        token = t
+        profile = p
+      } catch {
+        // Missing, or encrypted under another OS account/machine: treat as signed out.
+      }
+    })()
+    return loading
   }
 
   return {
@@ -52,19 +58,29 @@ export function createVault(dir: string, box: SecretBox) {
     },
     /** Synchronous accessor for the API client; `load()` has always run by the time a request is made. */
     getToken: (): string | null => token,
-    async load(): Promise<void> { await load() },
+    load,
     async save(newToken: string, who: Profile): Promise<void> {
-      loaded = true
+      await load()
+      if (canPersist()) {
+        // Persist first: if this throws, the user is told and nothing is half signed in.
+        await mkdir(dir, { recursive: true })
+        const tmp = `${tokenFile}.${process.pid}.tmp`
+        try {
+          await writeFile(tmp, box.encryptString(newToken), { mode: 0o600 })
+          await chmod(tmp, 0o600).catch(() => undefined)
+          await rename(tmp, tokenFile)
+        } catch (e) {
+          await rm(tmp, { force: true }).catch(() => undefined)
+          throw e
+        }
+        await writeJsonAtomic(profileFile, who)
+      }
+      touched = true
       token = newToken
       profile = who
-      if (!canPersist()) return
-      await mkdir(dir, { recursive: true })
-      await writeFile(tokenFile, box.encryptString(newToken))
-      await chmod(tokenFile, 0o600).catch(() => undefined)
-      await writeJsonAtomic(profileFile, who)
     },
     async clear(): Promise<void> {
-      loaded = true
+      touched = true
       token = null
       profile = null
       await rm(tokenFile, { force: true })

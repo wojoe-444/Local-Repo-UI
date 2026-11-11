@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { rename } from 'fs/promises'
 import { join, resolve } from 'path'
 import type {
   Issue, IssueComment, IssueCreateInput, IssueDetail, IssueLabel, IssueList, IssueListOptions, IssueStateReason,
@@ -82,7 +83,14 @@ export function createLocalIssues(dir: string, platform: NodeJS.Platform = proce
 
   async function load(repoPath: string): Promise<StoreFile> {
     const fresh: StoreFile = { version: 1, repoPath, nextNumber: 1, labels: DEFAULT_LABELS.map((l) => ({ ...l })), issues: [] }
-    return readJson<StoreFile>(fileFor(repoPath), fresh)
+    const s = await readJson<StoreFile | null>(fileFor(repoPath), null)
+    if (!s) return fresh
+    // A valid-JSON file of the wrong shape must not crash every issue call; keep it aside and start fresh.
+    if (typeof s !== 'object' || !Array.isArray(s.issues) || !Array.isArray(s.labels) || !Number.isSafeInteger(s.nextNumber)) {
+      await rename(fileFor(repoPath), `${fileFor(repoPath)}.corrupt-${Date.now()}`).catch(() => undefined)
+      return fresh
+    }
+    return s
   }
   /** Read-modify-write under a per-repo lock. */
   function mutate<T>(repoPath: string, fn: (s: StoreFile) => T): Promise<T> {
