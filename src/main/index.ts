@@ -2,13 +2,14 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, net, safeStorage, shell } fr
 import { stat } from 'fs/promises'
 import { join } from 'path'
 import * as git from './git'
+import { findGithubToken } from './git-credential'
 import { GITHUB_API, GithubError, assertRepoId, createGithubClient, fetchAvatar } from './github'
 import { createIssueService } from './issue-service'
 import { createLocalIssues } from './local-issues'
 import { createSettings } from './settings'
 import { createVault } from './vault'
 import type { RepoApi } from '../shared/api'
-import type { GithubRepo, RepoInfo } from '../shared/types'
+import type { AuthStatus, GithubRepo, RepoInfo } from '../shared/types'
 
 /** Repos the user has explicitly opened this session; IPC refuses to touch any other path. */
 const openedRepos = new Set<string>()
@@ -39,10 +40,27 @@ function registerIpc(): void {
     localAuthor: async (repo) => ({ login: (await git.gitUserName(repo)) ?? 'You', avatarUrl: null })
   })
   const avatars = new Map<string, string | null>()
+  let existingLogin: Promise<AuthStatus> | null = null
 
   const withClone = async (r: GithubRepo): Promise<GithubRepo> => {
     const p = await settings.getClone(r.owner, r.name)
     return { ...r, clonePath: p && (await isDir(p)) ? p : null }
+  }
+
+  /** Validates a token against GitHub, then stores it. */
+  async function completeSignIn(t: string): Promise<AuthStatus> {
+    if (!/^[\x21-\x7e]{20,255}$/.test(t)) throw new Error('That does not look like a GitHub token')
+    let who
+    try {
+      who = await createGithubClient({ getToken: () => t, fetchImpl, baseUrl: apiBase }).getViewer()
+    } catch (e) {
+      if (e instanceof GithubError && e.code === 'auth') throw new Error('GitHub rejected that token. Check that it was copied completely and has not expired.')
+      throw e
+    }
+    // Fetch the avatar once, now, so the account menu never needs the network (local-only repos stay offline).
+    const avatar = who.avatarUrl ? await fetchAvatar(fetchImpl, who.avatarUrl) : null
+    await vault.save(t, { login: who.login, name: who.name, avatarUrl: avatar })
+    return vault.status()
   }
 
   const handlers: { [K in keyof RepoApi]: (...a: Parameters<RepoApi[K]>) => ReturnType<RepoApi[K]> } = {
@@ -74,19 +92,24 @@ function registerIpc(): void {
 
     authStatus: () => vault.status(),
     authSignIn: async (token) => {
-      if (typeof token !== 'string' || !/^[\x21-\x7e]{20,255}$/.test(token.trim())) throw new Error('That does not look like a GitHub token')
-      const t = token.trim()
-      let who
-      try {
-        who = await createGithubClient({ getToken: () => t, fetchImpl, baseUrl: apiBase }).getViewer()
-      } catch (e) {
-        if (e instanceof GithubError && e.code === 'auth') throw new Error('GitHub rejected that token. Check that it was copied completely and has not expired.')
-        throw e
-      }
-      // Fetch the avatar once, now, so the account menu never needs the network (local-only repos stay offline).
-      const avatar = who.avatarUrl ? await fetchAvatar(fetchImpl, who.avatarUrl) : null
-      await vault.save(t, { login: who.login, name: who.name, avatarUrl: avatar })
-      return vault.status()
+      if (typeof token !== 'string') throw new Error('That does not look like a GitHub token')
+      return completeSignIn(token.trim())
+    },
+    authUseExistingLogin: () => {
+      // One lookup at a time: repeated clicks must not spawn a pile of processes.
+      existingLogin ??= (async () => {
+        const found = await findGithubToken()
+        if (!found) throw new Error('No existing GitHub login found. Install and sign in with the GitHub CLI (gh auth login), or paste a token instead.')
+        try {
+          return await completeSignIn(found.token)
+        } catch (e) {
+          // Only explain credential problems this way; storage or network failures keep their own message.
+          const credentialProblem = e instanceof GithubError || (e instanceof Error && /^(GitHub rejected|That does not look)/.test(e.message))
+          if (!(e instanceof Error) || !credentialProblem) throw e
+          throw new Error(`Found a credential from ${found.source === 'gh' ? 'the GitHub CLI' : 'git’s credential helper'}, but GitHub did not accept it for API use. Paste a token instead. (${e.message})`)
+        }
+      })().finally(() => { existingLogin = null })
+      return existingLogin
     },
     authSignOut: async () => { await vault.clear(); return vault.status() },
     githubListRepos: async () => {
